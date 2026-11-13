@@ -1,9 +1,9 @@
-﻿# Submission
+# Submission
 
 ## Candidate
-- **Name:** Candidate
-- **Assignment chosen:** B (Workflow)
-- **Time spent (honest estimate):** 7h
+- **Name:** Mohammed Atif Sayed
+- **Assignment chosen:** Assigment B (Workflow)
+- **Time spent (honest estimate):** 5-6h
 
 ## How to run
 ```bash
@@ -60,29 +60,29 @@ where `priority_tier` is **`1 = CALLBACK`**, **`2 = RETRY`**, and **`3 = FRESH`*
 To guarantee at-most-once dialling and survive arbitrary mid-flight `kill -9` crashes, all dialing actions follow a strict Write-Ahead Intent pattern:
 
 ```
-                  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                  â”‚      WAITING Lead      â”‚
-                  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                              â”‚
-                              â–¼ claim_next_calls() (Atomic: lead='DIALING')
-                         â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                         â”‚ INTENT  â”‚
-                         â””â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”˜
-                              â”‚ POST /v1/calls (request_id)
-             â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-             â–¼                â–¼                â–¼
+                  ┌────────────────────────┐
+                  │      WAITING Lead      │
+                  └───────────┬────────────┘
+                              │
+                              ▼ claim_next_calls() (Atomic: lead='DIALING')
+                         ┌─────────┐
+                         │ INTENT  │
+                         └────┬────┘
+                              │ POST /v1/calls (request_id)
+             ┌────────────────┼────────────────┐
+             ▼                ▼                ▼
         201 Created       503 / 4xx       504 Timeout / Network Error
-       â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-       â”‚  ACTIVE  â”‚     â”‚  ABORTED  â”‚     â”‚ UNKNOWN_504 â”‚
-       â””â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜
-            â”‚          (lead->WAITING,           â”‚
-            â”‚          attempts uncounted)       â”‚ Background GET /v1/calls?request_id=...
-            â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-            â”‚                                    â”‚                         â”‚
-            â–¼ Webhook call.completed             â–¼ Found (200 OK)          â–¼ Not Found (404)
-       â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                         â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”             â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-       â”‚  ENDED   â”‚                         â”‚  ENDED   â”‚             â”‚  ABORTED  â”‚
-       â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                         â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜             â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+       ┌──────────┐     ┌───────────┐     ┌─────────────┐
+       │  ACTIVE  │     │  ABORTED  │     │ UNKNOWN_504 │
+       └────┬─────┘     └───────────┘     └──────┬──────┘
+            │          (lead->WAITING,           │
+            │          attempts uncounted)       │ Background GET /v1/calls?request_id=...
+            ├────────────────────────────────────┼─────────────────────────┐
+            │                                    │                         │
+            ▼ Webhook call.completed             ▼ Found (200 OK)          ▼ Not Found (404)
+       ┌──────────┐                         ┌──────────┐             ┌───────────┐
+       │  ENDED   │                         │  ENDED   │             │  ABORTED  │
+       └──────────┘                         └──────────┘             └───────────┘
 ```
 
 1. **Before dialing `POST /v1/calls`**: An intent record is inserted into `call_attempts` with a unique deterministic/UUID `request_id` (`req_{campaign_id}_{lead_id}_{attempt_no}_{uuid}`), and the lead is marked `DIALING`.
@@ -95,7 +95,7 @@ To guarantee at-most-once dialling and survive arbitrary mid-flight `kill -9` cr
 |---|---|---|
 | **Counting `INTENT` and `UNKNOWN_504` toward tenant concurrency (`R2`) & phone locks (`R3`)** | Prevents race conditions and over-dialling while network requests or timeout reconciliations are in flight. Trades a momentary slot hold during 504 resolution for a 100% guarantee of zero concurrency violations. | Only counting `ACTIVE` calls (risks exceeding limits if multiple in-flight dials succeed concurrently). |
 | **Event-driven dispatch loop (`asyncio.Event` + 5ms timeout)** | Webhook arrival triggers `wakeup_event.set()`, waking the hot loop in `< 1ms` to claim the newly freed concurrency slot. Minimizes `callback_lateness_minutes` without aggressive polling. | Coarse polling sleep loop (e.g. `sleep(0.5)`), which introduces substantial latency at high simulation speeds. |
-| **Dynamic window closing safety buffer (`max(1800, int(2.0 * speed))`)** | At high speeds (1800xâ€“3600x), a fixed 30-second window margin is only 8â€“16ms of real time. A dynamic buffer ensures at least 2.0 real seconds of safety margin before window closing, eliminating `outside_calling_window` violations caused by asyncio scheduling or network jitter. | Fixed 30s buffer (fails under network latency at 3600x). |
+| **Dynamic window closing safety buffer (`max(1800, int(2.0 * speed))`)** | At high speeds (1800x–3600x), a fixed 30-second window margin is only 8–16ms of real time. A dynamic buffer ensures at least 2.0 real seconds of safety margin before window closing, eliminating `outside_calling_window` violations caused by asyncio scheduling or network jitter. | Fixed 30s buffer (fails under network latency at 3600x). |
 | **Independent HTTP connection pools (`dial_client` vs `reconcile_client`)** | Outbound dialing and background reconciliation sweeps run on separate HTTP connection pools, preventing reconciliation GET requests from starving outbound POST dials. | A single shared `httpx.AsyncClient`. |
 | **In-memory Webhook Secret Caching** | Webhook verification requires comparing HMAC-SHA256 signatures; caching secrets avoids synchronous database reads on every incoming webhook. | Querying `campaigns` table on every inbound webhook. |
 | **Self-healing `DIALING` lead restoration** | If any lead is in `state = 'DIALING'` but has no active attempt in `call_attempts` (due to an unhandled crash or abort), `claim_next_calls()` and `reconcile_in_flight()` automatically restore it to `WAITING`. | Letting orphaned leads remain stuck in `DIALING` forever. |
@@ -112,9 +112,9 @@ To guarantee at-most-once dialling and survive arbitrary mid-flight `kill -9` cr
 
 ## Testing
 
-### Automated Test Suite (`pytest` â€” 20 Unit Tests)
+### Automated Test Suite (`pytest` — 20 Unit Tests)
 1. **`tests/test_rules.py` (6 tests)**:
-   - Pure math tests using fake clock for calling window intersections (`[start, end) âˆ© [09:00, 21:00)` IST).
+   - Pure math tests using fake clock for calling window intersections (`[start, end) ∩ [09:00, 21:00)` IST).
    - Daylight window roll-overs and Sunday skipping.
    - Deterministic retry backoffs (`failed` = 15m, `no_answer` = 60m, `busy` = 60m).
    - Callback scheduling with exact priority tier assignment.
