@@ -3,6 +3,8 @@ __pycache__/
 .venv/
 .env
 *.db
+*.db-wal
+*.db-shm
 *.sqlite*
 data/
 data_large/
